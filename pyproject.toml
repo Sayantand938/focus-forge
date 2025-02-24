@@ -5,14 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "focus-forge"
 version = "0.1.0"
-description = "A Python package to manage a simple SQLite database with CLI commands."
+description = "Personal time tracker"
 authors = [
-    { name = "Your Name", email = "your.email@example.com" }
+    { name = "sayantan", email = "sayantand938@gmail.com" }
 ]
 dependencies = [
     "typer",
-    "rich",
-    "faker"
+    "rich"    
 ]
 readme = "README.md"
 requires-python = ">=3.7"
