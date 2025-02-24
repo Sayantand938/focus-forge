@@ -1,20 +1,37 @@
 # src/focus_forge/add_session.py
 import time
 from datetime import datetime, timedelta
-from .db_utils import start_session, stop_session, get_last_session, insert_session, check_for_overlap
-# import logging # Removed
-from pathlib import Path
 from typing import Tuple, Union
 import sqlite3
 
-# logger = logging.getLogger(__name__) # Removed
+from .db_utils import (check_for_overlap, get_last_session, insert_session,
+                       stop_session)
+
 
 def format_duration(seconds: Union[int, None]) -> str:
+    """
+    Formats a duration in seconds into a human-readable string.
+
+    Args:
+        seconds (int | None): The duration in seconds.
+
+    Returns:
+        str: The formatted duration string, or "N/A" if seconds is None.
+    """
     if seconds is None:
         return "N/A"
     return str(timedelta(seconds=seconds))
 
+
 def add_start_session() -> Tuple[bool, str]:
+    """
+    Adds a new focus session to the database with the current date and time.
+
+    Returns:
+        Tuple[bool, str]: A tuple containing:
+            - bool: True if the session was successfully started, False otherwise.
+            - str: A message indicating the result of the operation.
+    """
     current_date = datetime.now().strftime("%Y-%m-%d")
     start_time = datetime.now().strftime("%H:%M:%S")
     start_datetime = datetime.now()
@@ -26,12 +43,22 @@ def add_start_session() -> Tuple[bool, str]:
         insert_session(current_date, start_time)
         return True, f"Focus session started at {start_time}"
 
-    except sqlite3.OperationalError as e:
-        return False, "Database error: Please ensure the database is initialized." # More user friendly
-    except Exception as e:
+    except sqlite3.OperationalError:
+        return False, "Database error: Please ensure the database is initialized."
+    except Exception:
         return False, "An unexpected error occurred."
 
+
 def add_stop_session() -> Tuple[bool, Union[int, None], str]:
+    """
+    Stops the most recent focus session and updates its end time and duration.
+
+    Returns:
+        Tuple[bool, Union[int, None], str]: A tuple containing:
+            - bool: True if the session was successfully stopped, False otherwise.
+            - Union[int, None]: The duration of the session in seconds, or None if an error occurred.
+            - str: A message indicating the result of the operation.
+    """
     end_time = datetime.now().strftime("%H:%M:%S")
     end_datetime = datetime.now()
     current_date = datetime.now().strftime("%Y-%m-%d")
@@ -63,18 +90,29 @@ def add_stop_session() -> Tuple[bool, Union[int, None], str]:
         duration_int = int(duration)
         duration_formatted = format_duration(duration_int)
 
-
         if check_for_overlap(last_session[1], start_datetime.strftime("%H:%M:%S"), end_datetime.strftime("%H:%M:%S"), last_session[0]):
             return False, None, "Session overlaps with an existing session."
 
         if stop_session(end_time, duration_int):
             return True, duration_int, f"Session stopped at {end_time}. Duration: {duration_formatted}"
         else:
-            return False, None, "Failed to stop the session (database error)." # More concise
-    except Exception as e:
+            return False, None, "Failed to stop the session (database error)."
+    except Exception:
         return False, None, "An unexpected error occurred."
 
+
 def add_manual_session(time_range: str) -> Tuple[bool, str]:
+    """
+    Adds a manual focus session with a specified time range.
+
+    Args:
+        time_range (str): A string representing the time range in the format "HH:MM AM/PM - HH:MM AM/PM".
+
+    Returns:
+        Tuple[bool, str]: A tuple containing:
+            - bool: True if the session was successfully added, False otherwise.
+            - str: A message indicating the result of the operation.
+    """
     try:
         start_time_str, end_time_str = time_range.split(" - ")
         start_time = datetime.strptime(start_time_str, "%I:%M %p")
@@ -115,5 +153,5 @@ def add_manual_session(time_range: str) -> Tuple[bool, str]:
 
     except ValueError:
         return False, "Invalid time format. Use 'HH:MM AM/PM - HH:MM AM/PM'."
-    except Exception as e:
+    except Exception:
         return False, "An unexpected error occurred."
