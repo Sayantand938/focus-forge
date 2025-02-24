@@ -1,9 +1,8 @@
-# src/focus_forge/db_utils.py
-
+# db_utils.py
 import sqlite3
 from pathlib import Path
 from datetime import datetime, date, timedelta
-from typing import Optional
+from typing import Optional, List, Tuple
 import re
 import json
 from .config import DB_FILE, ID_MAPPING_FILE, DB_DIR
@@ -21,6 +20,15 @@ def initialize_db():
             duration INTEGER
         )
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS leaderboard (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT NOT NULL,
+            name TEXT NOT NULL,
+            duration INTEGER NOT NULL,
+            UNIQUE(date, name)
+        )
+    """)
     conn.commit()
     conn.close()
 
@@ -29,6 +37,7 @@ def clear_db():
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("DELETE FROM focus_forge")
+    cursor.execute("DELETE FROM leaderboard")
     conn.commit()
     conn.close()
     update_id_mapping()  # Clear the ID mapping.
@@ -349,3 +358,27 @@ def get_db_id(serial_number: int) -> int:
         raise ValueError("ID mapping file not found.  Run 'list' to generate it.")
     except Exception as e:
         raise  # Re-raise other exceptions.
+
+def update_or_insert_leaderboard(date:str, name:str, duration:int):
+    """Updates or insert leaderboard data"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+
+    # Try to update, if not exist, insert.
+    cursor.execute("""
+        INSERT INTO leaderboard (date, name, duration)
+        VALUES (?, ?, ?)
+        ON CONFLICT(date, name) DO UPDATE SET duration = excluded.duration
+    """, (date, name, duration))
+
+    conn.commit()
+    conn.close()
+
+def get_leaderboard_data(date: str):
+    """Gets leaderboard data for given date."""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT name, duration FROM leaderboard WHERE date = ? ORDER BY duration DESC", (date,))
+    data = cursor.fetchall()
+    conn.close()
+    return data

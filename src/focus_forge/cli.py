@@ -4,10 +4,13 @@ from .add_session import add_start_session, add_stop_session, add_manual_session
 from .list_sessions import display_sessions
 from .db_utils import delete_session, edit_session, update_id_mapping, get_db_id, fetch_all_data
 from .summary_sessions import calculate_summary
+from .leaderboard import display_leaderboard  # Corrected import
 from enum import Enum
 from typing import Optional, Tuple
 from datetime import datetime, date, timedelta, time
 import re
+import random
+
 
 app = typer.Typer()
 
@@ -238,6 +241,13 @@ def summary(sort: SummarySortOption = typer.Option(SummarySortOption.date_desc, 
 
     if result:
         typer.echo(result) # Output summary or message.
+
+@app.command()
+def rank():
+    """Displays a leaderboard of focus session durations."""
+    result = display_leaderboard()
+    if result:
+        typer.echo(result)
 
 if __name__ == "__main__":
     app()
