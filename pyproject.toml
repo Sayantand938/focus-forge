@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "focus-forge"
+version = "0.1.0"
+description = "A Python package to manage a simple SQLite database with CLI commands."
+authors = [
+    { name = "Your Name", email = "your.email@example.com" }
+]
+dependencies = [
+    "typer",
+    "rich",
+    "faker"
+]
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.scripts]
+focus = "focus_forge.cli:app"
+
+[tool.setuptools]
+packages = ["focus_forge"]
+package-dir = {"" = "src"}
