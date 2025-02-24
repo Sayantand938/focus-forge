@@ -7,11 +7,11 @@ from .summary_sessions import calculate_summary
 from enum import Enum
 from typing import Optional, Tuple
 from datetime import datetime, date, timedelta, time
-import logging
+# import logging # Removed
 import re
 
 
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__) # Removed
 
 app = typer.Typer()
 
@@ -37,19 +37,14 @@ class SummarySortOption(str, Enum):
 def start():
     """Start a new focus session."""
     success, message = add_start_session()
-    if success:
-        typer.echo(message)
-    else:
-        typer.echo(message)
+    typer.echo(message)  # Always echo, rely on the message content.
+
 
 @app.command()
 def stop():
     """Stop the current focus session."""
     success, duration, message = add_stop_session()
-    if success:
-        typer.echo(message)
-    else:
-        typer.echo(message)
+    typer.echo(message) # Always echo.
 
 
 def parse_date_argument(arg_value: Optional[str], arg_name: str) -> Tuple[Optional[str], Optional[str]]:
@@ -85,7 +80,7 @@ def parse_date_argument(arg_value: Optional[str], arg_name: str) -> Tuple[Option
             continue
 
     typer.echo(f"Error: Invalid {arg_name} format. Use YYYY-MM-DD, YYYY-MM, YYYY, or a valid relative date keyword.")
-    raise typer.Exit(code=1)  # Corrected line
+    raise typer.Exit(code=1)
 
 @app.command()
 def list(sort: SortOption = typer.Option(SortOption.date, "--sort", help="Sort the output."),
@@ -104,15 +99,15 @@ def list(sort: SortOption = typer.Option(SortOption.date, "--sort", help="Sort t
     if month_value:
         if since_value or until_value or date_value:
             typer.echo("Error: Cannot use --month with --since, --until or --date.")
-            raise typer.Exit(code=1)  # Corrected line
+            raise typer.Exit(code=1)
         if month_format != "%Y-%m" and month_format != None :
             typer.echo("Error: Invalid --month format. Use YYYY-MM.")
-            raise typer.Exit(code=1) # Corrected line
+            raise typer.Exit(code=1)
 
 
     elif since_format and until_format and since_format != until_format:
         typer.echo("Error: Cannot mix date, month, and year formats for --since and --until.")
-        raise typer.Exit(code=1)  # Corrected line
+        raise typer.Exit(code=1)
     elif since_value and until_value:
          # We need to compare using datetime objects after resolving relative dates
         since_datetime = datetime.strptime(since_value, since_format) if since_format else datetime.strptime(since_value + "-01-01" if len(since_value) == 4 else since_value + "-01", "%Y-%m")
@@ -120,7 +115,7 @@ def list(sort: SortOption = typer.Option(SortOption.date, "--sort", help="Sort t
 
         if since_datetime > until_datetime:
             typer.echo("Error: --since cannot be after --until.")
-            raise typer.Exit(code=1)  # Corrected line
+            raise typer.Exit(code=1)
 
     # Update id_mapping *before* fetching data.
     update_id_mapping(sort_by=sort, date=date_value, since=since_value, until=until_value, month=month_value)
@@ -133,10 +128,7 @@ def list(sort: SortOption = typer.Option(SortOption.date, "--sort", help="Sort t
 def add(time_range: str):
     """Add a focus session manually.  Format: "08:00 AM - 10:00 AM"."""
     success, message = add_manual_session(time_range)
-    if success:
-        typer.echo(message)
-    else:
-        typer.echo(message)
+    typer.echo(message) # Always echo.
 
 @app.command()
 def delete(serial_number: int):
@@ -144,14 +136,11 @@ def delete(serial_number: int):
     try:
         db_id = get_db_id(serial_number)  # Get the database ID from serial number
         success, message = delete_session(db_id) # Pass db_id
-        if success:
-            typer.echo(message)
-        else:
-            typer.echo(message)
+        typer.echo(message) # Always echo.
     except ValueError as e:
         typer.echo(str(e))  # Display error from get_db_id
     except Exception as e:
-        logger.error(f"An error occurred while deleting: {e}")
+        # logger.error(f"An error occurred while deleting: {e}") # Removed
         typer.echo("An unexpected error occurred.")
 
 @app.command()
@@ -170,32 +159,29 @@ def edit(
         if start_time:
             if not re.match(r"^\d{2}:\d{2}:\d{2}$", start_time):
                 typer.echo("Invalid start time format. Use HH:MM:SS (e.g., 08:30:00).")
-                raise typer.Exit(code=1)  # Corrected line
+                raise typer.Exit(code=1)
             try:  # Still check for valid *time* values
                 datetime.strptime(start_time, "%H:%M:%S")
             except ValueError:
                 typer.echo("Invalid start time.  Ensure hours (00-23), minutes (00-59), and seconds (00-59) are valid.")
-                raise typer.Exit(code=1)  # Corrected line
+                raise typer.Exit(code=1)
         if end_time:
             if not re.match(r"^\d{2}:\d{2}:\d{2}$", end_time):
                 typer.echo("Invalid end time format. Use HH:MM:SS (e.g., 17:00:00).")
-                raise typer.Exit(code=1)  # Corrected line
+                raise typer.Exit(code=1)
             try:
                 datetime.strptime(end_time, "%H:%M:%S")
             except ValueError:
                 typer.echo("Invalid end time. Ensure hours (00-23), minutes (00-59), and seconds (00-59) are valid.")
-                raise typer.Exit(code=1) # Corrected line
+                raise typer.Exit(code=1)
 
         success, message = edit_session(db_id, date_value, start_time, end_time)  # Pass db_id
-        if success:
-            typer.echo(message)
-        else:
-            typer.echo(message)
+        typer.echo(message) # Always echo.
 
     except ValueError as e:
         typer.echo(str(e)) # Show errors from get_db_id
     except Exception as e:
-        logger.error(f"An error occurred: {e}")
+        # logger.error(f"An error occurred: {e}") # Removed
         typer.echo("An unexpected error occurred.")
 
 @app.command()
@@ -217,30 +203,30 @@ def summary(sort: SummarySortOption = typer.Option(SummarySortOption.date_desc, 
     if month_value:
         if since_value or until_value or date_value:
             typer.echo("Error: Cannot use --month with --since, --until or --date.")
-            raise typer.Exit(code=1)  # Corrected line
+            raise typer.Exit(code=1)
         if month_format != "%Y-%m" and month_format != None :
             typer.echo("Error: Invalid --month format. Use YYYY-MM.")
-            raise typer.Exit(code=1) # Corrected line
+            raise typer.Exit(code=1)
 
     elif since_format and until_format and since_format != until_format:
         typer.echo("Error: Cannot mix date, month, and year formats for --since and --until.")
-        raise typer.Exit(code=1) # Corrected line
+        raise typer.Exit(code=1)
 
     elif since_value and until_value:
         since_datetime = datetime.strptime(since_value, since_format) if since_format else datetime.strptime(since_value + "-01-01" if len(since_value) == 4 else since_value + "-01", "%Y-%m")
         until_datetime = datetime.strptime(until_value, until_format) if until_format else datetime.strptime(until_value + "-12-31" if len(until_value) == 4 else until_value + f"-{ (datetime.strptime(until_value + '-1', '%Y-%m') + timedelta(days=31)).strftime('%d')}", "%Y-%m-%d" )
         if since_datetime > until_datetime:
             typer.echo("Error: --since cannot be after --until.")
-            raise typer.Exit(code=1)  # Corrected line
+            raise typer.Exit(code=1)
 
     if status and status.lower() not in ("passed", "failed"):
         typer.echo("Error: --status must be either 'passed' or 'failed'.")
-        raise typer.Exit(code=1)  # Corrected line
+        raise typer.Exit(code=1)
 
     result = calculate_summary(sort_by=sort, date=date_value, since=since_value, until=until_value, month=month_value, status_filter=status, average_filter=average, total_filter=total)
 
     if result:
-        typer.echo(result)
+        typer.echo(result) # Always echo.
 
 if __name__ == "__main__":
     app()
