@@ -1,1 +1,5 @@
-# focus-forge
+# For dev run this
+
+```
+pip install . -e
+```
