@@ -35,7 +35,7 @@ if __name__ == "__main__":
     print(f"Project Root Directory: {current_directory}")
 
     # Exclude common unnecessary directories
-    exclude_dirs = {"node_modules", "venv", ".git", "__pycache__", "build", "dist"}
+    exclude_dirs = {"node_modules", "venv", ".git", "__pycache__", "build", "dist", "backup"}
 
     # Exclude patterns
     exclude_patterns = {"*.egg-info"}

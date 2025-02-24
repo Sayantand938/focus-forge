@@ -2,12 +2,15 @@
 import typer
 from .add_session import add_start_session, add_stop_session, add_manual_session, format_duration
 from .list_sessions import display_sessions
-from .db_utils import delete_session, edit_session, update_id_mapping, get_db_id
+from .db_utils import delete_session, edit_session, update_id_mapping, get_db_id, fetch_all_data
+from .usage import display_usage
+from .summary_sessions import calculate_summary # Import from summary_sessions
 from enum import Enum
 from typing import Optional, Tuple
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, time
 import logging
 import re
+
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +23,16 @@ class SortOption(str, Enum):
     start_time_desc = "start-time-desc"
     duration = "duration"
     duration_desc = "duration-desc"
+
+class SummarySortOption(str, Enum):
+    date = "date"
+    date_desc = "date-desc"
+    average = "average"
+    average_desc = "average-desc"
+    total = "total"
+    total_desc = "total-desc"
+    status = "status"
+    status_desc = "status-desc"
 
 @app.command()
 def start():
@@ -186,8 +199,57 @@ def edit(
         logger.error(f"An error occurred: {e}")
         typer.echo("An unexpected error occurred.")
 
+@app.command()
+def usage():
+    """Display usage information."""
+    display_usage()
+
+@app.command()
+def summary(sort: SummarySortOption = typer.Option(SummarySortOption.date_desc, "--sort", help="Sort the output."),
+         date: Optional[str] = typer.Option(None, "--date", "-d", help="Filter by date (YYYY-MM-DD, relative date)."),
+         since: Optional[str] = typer.Option(None, "--since", "-S", help="Show sessions since this date/month/year (YYYY-MM-DD, YYYY-MM, YYYY, or relative date)."),
+         until: Optional[str] = typer.Option(None, "--until", "-U", help="Show sessions until this date/month/year (YYYY-MM-DD, YYYY-MM, YYYY, or relative date)."),
+         month: Optional[str] = typer.Option(None, "--month", "-m", help="Show sessions for a specific month (YYYY-MM)."),
+         status: Optional[str] = typer.Option(None, "--status", help="Filter by status (passed/failed)."),
+         average: Optional[str] = typer.Option(None, "--average", help="Filter average duration. Format: 'op:duration', e.g., 'gt:2h30m'"),  # New filter
+         total: Optional[str] = typer.Option(None, "--total", help="Filter total duration. Format: 'op:duration', e.g., 'gte:8h'"), # New filter
+        ):
+    """Display a summary of focus sessions."""
+    since_format, since_value = parse_date_argument(since, "--since")
+    until_format, until_value = parse_date_argument(until, "--until")
+    month_format, month_value = parse_date_argument(month, "--month")
+    date_format, date_value = parse_date_argument(date, "--date")
+
+    if month_value:
+        if since_value or until_value or date_value:
+            typer.echo("Error: Cannot use --month with --since, --until or --date.")
+            raise typer.Exit(code=1)
+        if month_format != "%Y-%m" and month_format != None :
+            typer.echo("Error: Invalid --month format. Use YYYY-MM.")
+            raise typer.Exit(code=1)
+
+    elif since_format and until_format and since_format != until_format:
+        typer.echo("Error: Cannot mix date, month, and year formats for --since and --until.")
+        raise typer.Exit(code=1)
+
+    elif since_value and until_value:
+        since_datetime = datetime.strptime(since_value, since_format) if since_format else datetime.strptime(since_value + "-01-01" if len(since_value) == 4 else since_value + "-01", "%Y-%m")
+        until_datetime = datetime.strptime(until_value, until_format) if until_format else datetime.strptime(until_value + "-12-31" if len(until_value) == 4 else until_value + f"-{ (datetime.strptime(until_value + '-1', '%Y-%m') + timedelta(days=31)).strftime('%d')}", "%Y-%m-%d" )
+        if since_datetime > until_datetime:
+            typer.echo("Error: --since cannot be after --until.")
+            raise typer.Exit(code=1)
+
+    if status and status.lower() not in ("passed", "failed"):
+        typer.echo("Error: --status must be either 'passed' or 'failed'.")
+        raise typer.Exit(code=1)
+
+    # No need for explicit validation of average/total filters here.
+    # The parsing and validation happens inside calculate_summary.
+
+    result = calculate_summary(sort_by=sort, date=date_value, since=since_value, until=until_value, month=month_value, status_filter=status, average_filter=average, total_filter=total)
+
+    if result:
+        typer.echo(result)
 
 if __name__ == "__main__":
     app()
-
-

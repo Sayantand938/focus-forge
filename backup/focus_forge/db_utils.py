@@ -40,6 +40,14 @@ def initialize_db():
 # Call initialize_db() when the module is imported
 initialize_db()
 
+def clear_db():
+    """Removes all data from the database.  FOR TESTING ONLY."""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM focus_forge")
+    conn.commit()
+    conn.close()
+    update_id_mapping() # CRITICAL: Clear the ID mapping as well!
 
 def start_session(current_date, start_time):
     """Starts a new focus session."""
@@ -384,8 +392,3 @@ def get_db_id(serial_number: int) -> int:
     except Exception as e:
         logger.error(f"Error getting DB ID: {e}")
         raise
-
-
-
-
-
