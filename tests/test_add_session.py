@@ -28,13 +28,13 @@ class TestAddSession(unittest.TestCase):
         self.assertIn("Stopping last session", mock_stdout.getvalue())
         mock_stop_session.assert_called_once()
 
-    # @patch('src.focus_forge.add_session.input', side_effect=['2024-01-01 10:00-11:00', 'y'])
-    # @patch('src.focus_forge.add_session.db_utils.insert_session')
-    # @patch('sys.stdout', new_callable=StringIO)
-    # def test_add_manual_session(self, mock_stdout, mock_insert_session, mock_input):
-    #     add_session.add_manual_session()
-    #     self.assertIn("Adding manual session", mock_stdout.getvalue())
-    #     mock_insert_session.assert_called_once()
+    @patch('src.focus_forge.add_session.input', side_effect=['2024-01-01 10:00-11:00', 'y', 'y'])
+    @patch('src.focus_forge.add_session.db_utils.insert_session')
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_add_manual_session(self, mock_stdout, mock_insert_session, mock_input):
+        add_session.add_manual_session()
+        self.assertIn("Adding manual session", mock_stdout.getvalue())
+        mock_insert_session.assert_called_once()
 
 
 if __name__ == '__main__':
