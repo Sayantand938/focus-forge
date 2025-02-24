@@ -2,7 +2,7 @@
 from rich.console import Console
 from rich.table import Table
 from .db_utils import fetch_all_data, update_or_insert_leaderboard, get_leaderboard_data
-from .summary_sessions import format_duration  # Re-use the format_duration function
+from .session_summary import format_duration
 from datetime import date
 import random
 from typing import List, Dict

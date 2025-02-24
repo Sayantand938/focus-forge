@@ -1,10 +1,10 @@
 # src/focus_forge/cli.py
 import typer
-from .add_session import add_start_session, add_stop_session, add_manual_session, format_duration
-from .list_sessions import display_sessions
+from .session_manager import add_start_session, add_stop_session, add_manual_session, format_duration
+from .session_details import display_sessions
 from .db_utils import delete_session, edit_session, update_id_mapping, get_db_id, fetch_all_data
-from .summary_sessions import calculate_summary
-from .leaderboard import display_leaderboard  # Corrected import
+from .session_summary import calculate_summary
+from .leaderboard_manager import display_leaderboard  # Corrected import
 from enum import Enum
 from typing import Optional, Tuple
 from datetime import datetime, date, timedelta, time
