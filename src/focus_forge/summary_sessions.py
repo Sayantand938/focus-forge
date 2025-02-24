@@ -1,5 +1,4 @@
 # src/focus_forge/summary_sessions.py
-import logging
 from rich.console import Console
 from rich.table import Table
 from .db_utils import fetch_all_data
@@ -7,10 +6,9 @@ from typing import Optional, Dict, Any, Callable
 from collections import defaultdict
 import re
 
-logger = logging.getLogger(__name__)
 
 def format_duration(seconds):
-    """Formats seconds as hh:mm:ss, handling durations > 24 hours."""
+    # Formats seconds as hh:mm:ss, handling durations > 24 hours.
     if seconds is None:
         return "N/A"
 
@@ -19,7 +17,7 @@ def format_duration(seconds):
     return f"{hours:02}:{minutes:02}:{seconds:02}"
 
 def parse_duration(duration_str: str) -> int:
-    """Parses a duration string (e.g., '2h30m', '150m', '9000s') into seconds."""
+    # Parses a duration string (e.g., '2h30m', '150m', '9000s') into seconds.
     match = re.match(r"^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$", duration_str)
     if not match:
         raise ValueError(f"Invalid duration format: {duration_str}")
@@ -38,16 +36,18 @@ def parse_duration(duration_str: str) -> int:
 
 def calculate_summary(sort_by: Optional[str] = None, date: Optional[str] = None, since: Optional[str] = None, until: Optional[str] = None, month: Optional[str] = None, status_filter: Optional[str] = None,
                       average_filter: Optional[str] = None, total_filter: Optional[str] = None):  # Added filter parameters
-    """Calculates and displays the summary of focus sessions."""
-    rows = fetch_all_data(sort_by=None, date=date, since=since, until=until, month=month)  # Don't pre-sort here.
+    # Calculates and displays a summary of focus sessions.
+    # Fetches data without pre-sorting, then processes it.
+    rows = fetch_all_data(sort_by=None, date=date, since=since, until=until, month=month)
 
     if not rows:
         return "No sessions found to summarize."
 
+    # Aggregate data by date.
     daily_data = defaultdict(lambda: {"total_duration": 0, "count": 0})
     for row in rows:
         date_str = row[1]
-        duration = row[4] if row[4] is not None else 0
+        duration = row[4] if row[4] is not None else 0  # Use 0 for None durations.
         daily_data[date_str]["total_duration"] += duration
         daily_data[date_str]["count"] += 1
 
@@ -57,10 +57,10 @@ def calculate_summary(sort_by: Optional[str] = None, date: Optional[str] = None,
         total_duration = data["total_duration"]
         calculated_status = "[green][bold]Passed[/bold][/green]" if total_duration >= 8 * 3600 else "[red][bold]Failed[/bold][/red]"
 
-        # --- Apply filters ---
+        # Apply filters.  Data is excluded if it doesn't meet *any* filter criteria.
         if status_filter:
             if status_filter.lower() == "passed" and calculated_status.startswith("[red"):
-                continue
+                continue  # Skip this entry.
             elif status_filter.lower() == "failed" and calculated_status.startswith("[green"):
                 continue
 

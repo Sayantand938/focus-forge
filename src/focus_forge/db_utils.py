@@ -4,15 +4,12 @@ import sqlite3
 from pathlib import Path
 from datetime import datetime, date, timedelta
 from typing import Optional
-# import logging # Removed
 import re
 import json
 from .config import DB_FILE, ID_MAPPING_FILE, DB_DIR
 
-# logger = logging.getLogger(__name__) # Removed
-
 def initialize_db():
-    """Initialize the database and create the table if it doesn't exist."""
+    # Initialize the database and create the table if it doesn't exist.
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("""
@@ -28,16 +25,16 @@ def initialize_db():
     conn.close()
 
 def clear_db():
-    """Removes all data from the database.  FOR TESTING ONLY."""
+    # Removes all data from the database. FOR TESTING ONLY.
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("DELETE FROM focus_forge")
     conn.commit()
     conn.close()
-    update_id_mapping() # CRITICAL: Clear the ID mapping as well!
+    update_id_mapping()  # Clear the ID mapping.
 
 def start_session(current_date, start_time):
-    """Starts a new focus session."""
+    # Starts a new focus session, with no end time or duration.
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("""
@@ -46,10 +43,10 @@ def start_session(current_date, start_time):
     """, (current_date, start_time))
     conn.commit()
     conn.close()
-    update_id_mapping()  # Update serial numbers after insertion
+    update_id_mapping()  # Update serial numbers.
 
 def insert_session(date, start_time, end_time=None, duration=None):
-    """Inserts a session into the database."""
+    # Inserts a session. Used for starting, stopping, and manual entries.
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("""
@@ -58,10 +55,10 @@ def insert_session(date, start_time, end_time=None, duration=None):
     """, (date, start_time, end_time, duration))
     conn.commit()
     conn.close()
-    update_id_mapping() # Update serial numbers after insertion
+    update_id_mapping()  # Update serial numbers.
 
 def stop_session(end_time, duration):
-    """Stops the current focus session."""
+    # Stops the current focus session by updating the last entry.
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
 
@@ -72,12 +69,13 @@ def stop_session(end_time, duration):
     """, (end_time, duration))
     conn.commit()
     conn.close()
+    # Return True if a row was actually updated, False otherwise.
     if cursor.rowcount == 0:
         return False
     return True
 
 def get_last_session():
-    """Retrieves the last session (for checking if one is running)."""
+    # Retrieves the last session, used to check if a session is running.
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM focus_forge WHERE end_time IS NULL ORDER BY id DESC LIMIT 1")
@@ -86,7 +84,7 @@ def get_last_session():
     return row
 
 def _validate_date(date_str: str, date_format:str = "%Y-%m-%d"):
-    """Validates that the given string is a valid date in YYYY-MM-DD format."""
+    # Validates that the string is a valid date.
     try:
         datetime.strptime(date_str, date_format)
         return True
@@ -94,12 +92,12 @@ def _validate_date(date_str: str, date_format:str = "%Y-%m-%d"):
         return False
 
 def _validate_time(time_str: str) -> bool:
-    """Validates HH:MM:SS time format using regex."""
+    # Validates time format using regex.
     return bool(re.match(r"^\d{2}:\d{2}:\d{2}$", time_str))
 
 
 def fetch_all_data(sort_by: Optional[str] = None, date: Optional[str] = None, since: Optional[str] = None, until: Optional[str] = None, month: Optional[str] = None):
-    """Fetch all data, optionally sorted and filtered."""
+    # Fetch all data with optional sorting and filtering.
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
 
@@ -107,9 +105,10 @@ def fetch_all_data(sort_by: Optional[str] = None, date: Optional[str] = None, si
     conditions = []
     params = []
 
+    # Build WHERE clause based on filters.
     if date:
         conditions.append("date = ?")
-        params.append(date)  # date is already validated
+        params.append(date)  # date is already validated.
     elif month:
         conditions.append("strftime('%Y-%m', date) = ?")
         params.append(month)
@@ -135,6 +134,7 @@ def fetch_all_data(sort_by: Optional[str] = None, date: Optional[str] = None, si
     if conditions:
         query += " WHERE " + " AND ".join(conditions)
 
+    # Add ORDER BY clause.
     if sort_by:
         if sort_by == "date":
             query += " ORDER BY date ASC"
@@ -148,7 +148,7 @@ def fetch_all_data(sort_by: Optional[str] = None, date: Optional[str] = None, si
             query += " ORDER BY duration DESC"
         elif sort_by == "duration-desc":
             query += " ORDER BY duration ASC"
-        else: #default case added
+        else: #default case
            query += " ORDER BY date ASC"
 
     cursor.execute(query, params)
@@ -157,11 +157,11 @@ def fetch_all_data(sort_by: Optional[str] = None, date: Optional[str] = None, si
     return rows
 
 def delete_session(session_id: int):
-    """Deletes a session by its ID."""
+    # Deletes a session by its ID.
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
 
-    # Check if the session exists before attempting to delete
+    # Check if session exists.
     cursor.execute("SELECT * FROM focus_forge WHERE id = ?", (session_id,))
     if cursor.fetchone() is None:
         conn.close()
@@ -172,29 +172,19 @@ def delete_session(session_id: int):
     conn.close()
 
     if cursor.rowcount > 0:
-        update_id_mapping()
+        update_id_mapping()  # Update serial numbers after deletion.
         return True, f"Session with ID {session_id} deleted successfully."
     else:
         return False, f"Failed to delete session with ID {session_id}."
 
 def check_for_overlap(date_str: str, start_time_str: str, end_time_str: Optional[str] = None, session_id: Optional[int] = None) -> bool:
-    """
-    Checks if a given time range overlaps with any existing sessions.
-
-    Args:
-        date_str: The date of the session in YYYY-MM-DD format.
-        start_time_str: The start time of the session in HH:MM:SS format.
-        end_time_str: The end time of the session in HH:MM:SS format.  If None, checks if start_time overlaps.
-        session_id:  Optional.  If provided, excludes this session ID from the overlap check (used for updates).
-
-    Returns:
-        True if there is an overlap, False otherwise.
-    """
+    # Checks if a given time range overlaps with existing sessions.
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
 
     start_datetime = datetime.strptime(f"{date_str} {start_time_str}", "%Y-%m-%d %H:%M:%S")
 
+    # If no end time, check if start_time falls within any existing session.
     if end_time_str is None:
         query = """
             SELECT 1 FROM focus_forge
@@ -202,7 +192,7 @@ def check_for_overlap(date_str: str, start_time_str: str, end_time_str: Optional
         """
         params = (date_str, start_time_str, start_time_str)
         if session_id:
-            query += " AND id != ?"
+            query += " AND id != ?"  # Exclude the session being updated.
             params += (session_id,)
 
         cursor.execute(query, params)
@@ -210,6 +200,7 @@ def check_for_overlap(date_str: str, start_time_str: str, end_time_str: Optional
         conn.close()
         return result is not None
 
+    # If end time is provided, check for any overlaps.
     end_datetime = datetime.strptime(f"{date_str} {end_time_str}", "%Y-%m-%d %H:%M:%S")
     query = """
     SELECT 1
@@ -224,16 +215,16 @@ def check_for_overlap(date_str: str, start_time_str: str, end_time_str: Optional
     params = (date_str, start_time_str, start_time_str, end_time_str, end_time_str, start_time_str, end_time_str)
 
     if session_id:
-        query += " AND id != ?"
+        query += " AND id != ?"  # Exclude the session being updated.
         params += (session_id,)
 
     cursor.execute(query, params)
     result = cursor.fetchone()
     conn.close()
-    return result is not None
+    return result is not None  # True if overlap exists, False otherwise.
 
 def get_session_by_id(session_id: int):
-    """Retrieves a session by its ID."""
+    # Retrieves a session by its ID.
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM focus_forge WHERE id = ?", (session_id,))
@@ -242,7 +233,7 @@ def get_session_by_id(session_id: int):
     return row
 
 def edit_session(session_id: int, new_date: Optional[str] = None, new_start_time: Optional[str] = None, new_end_time: Optional[str] = None):
-    """Edits an existing session."""
+    # Edits an existing session's date/times.
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
 
@@ -252,10 +243,12 @@ def edit_session(session_id: int, new_date: Optional[str] = None, new_start_time
 
     _, original_date, original_start_time, original_end_time, _ = session
 
+    # Use original values if new values are not provided.
     updated_date = new_date if new_date is not None else original_date
     updated_start_time = new_start_time if new_start_time is not None else original_start_time
     updated_end_time = new_end_time if new_end_time is not None else original_end_time
 
+    # Validate the new values.
     if new_date and not _validate_date(updated_date):
          return False, f"Invalid date format: {updated_date}. Use YYYY-MM-DD."
 
@@ -266,6 +259,7 @@ def edit_session(session_id: int, new_date: Optional[str] = None, new_start_time
         return False, f"Invalid end time format: {updated_end_time}. Use HH:MM:SS."
 
     try:
+        # Construct datetime objects.  Handle cases where only one of start/end is updated.
         if updated_start_time and updated_end_time:
             start_datetime = datetime.strptime(f"{updated_date} {updated_start_time}", "%Y-%m-%d %H:%M:%S")
             end_datetime = datetime.strptime(f"{updated_date} {updated_end_time}", "%Y-%m-%d %H:%M:%S")
@@ -289,6 +283,7 @@ def edit_session(session_id: int, new_date: Optional[str] = None, new_start_time
              if start_datetime >= datetime.strptime(f"{updated_date} {original_end_time}", "%Y-%m-%d %H:%M:%S"):
                 return False, "Start time cannot be after or equal to the original end time."
 
+        #Check for the overnight session
         if end_datetime < start_datetime:
             end_datetime += timedelta(days=1)
 
@@ -300,9 +295,11 @@ def edit_session(session_id: int, new_date: Optional[str] = None, new_start_time
     except ValueError as e:
         return False, f"Error processing time values: {e}"
 
+    # Check for overlaps *before* updating.  Exclude current session from check.
     if check_for_overlap(updated_date, updated_start_time, updated_end_time, session_id):
         return False, "Updated session overlaps with an existing session."
 
+    # Perform the update.
     cursor.execute("""
         UPDATE focus_forge
         SET date = ?, start_time = ?, end_time = ?, duration = ?
@@ -313,13 +310,13 @@ def edit_session(session_id: int, new_date: Optional[str] = None, new_start_time
     conn.close()
 
     if cursor.rowcount > 0:
-        update_id_mapping()
+        update_id_mapping()  # Update serial numbers after editing.
         return True, f"Session with ID {session_id} updated successfully."
     else:
         return False, f"Failed to update session with ID {session_id} (database error)."
 
 def update_id_mapping(sort_by: Optional[str] = None, date: Optional[str] = None, since: Optional[str] = None, until: Optional[str] = None, month: Optional[str] = None):
-    """Updates the id_mapping.json file with current database entries."""
+    # Updates id_mapping.json with database entries.
     try:
         if Path(ID_MAPPING_FILE).exists():
             with open(ID_MAPPING_FILE, 'r') as f:
@@ -330,20 +327,17 @@ def update_id_mapping(sort_by: Optional[str] = None, date: Optional[str] = None,
         rows = fetch_all_data(sort_by=sort_by, date=date, since=since, until=until, month=month)
         new_mapping = {}
         for serial_num, row in enumerate(rows, start=1):
-            db_id = row[0]
-            new_mapping[str(serial_num)] = db_id
+            db_id = row[0]  # Database ID is the first element.
+            new_mapping[str(serial_num)] = db_id #string type serial number and database id.
 
         with open(ID_MAPPING_FILE, 'w') as f:
             json.dump(new_mapping, f, indent=4)
 
     except Exception as e:
-        # logger.error(f"Error updating ID mapping: {e}") # Removed
-        # raise  # Removed raise, as this isn't critical for user-facing functionality now
-        print(f"Error updating ID mapping: {e}") #prints on console
-
+        print(f"Error updating ID mapping: {e}")
 
 def get_db_id(serial_number: int) -> int:
-    """Retrieves the database ID for a given serial number."""
+    # Retrieves the database ID for a given serial number.
     try:
         with open(ID_MAPPING_FILE, 'r') as f:
             id_mapping = json.load(f)
@@ -354,5 +348,4 @@ def get_db_id(serial_number: int) -> int:
     except FileNotFoundError:
         raise ValueError("ID mapping file not found.  Run 'list' to generate it.")
     except Exception as e:
-        # logger.error(f"Error getting DB ID: {e}") # Removed
-        raise
+        raise  # Re-raise other exceptions.
