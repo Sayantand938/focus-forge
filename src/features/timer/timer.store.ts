@@ -1,17 +1,17 @@
-// src/features/timer/timer.store.ts
+// File: src/features/timer/timer.store.ts
 import { create } from "zustand";
 import { toast } from "sonner";
 import { useFocusSheetStore } from "@/features/focus-sheet/focus-sheet.store";
-import { showNotification } from "@/shared/lib/notifications";
-import { useSettingsStore } from "@/features/settings/settings.store";
 
 interface TimerState {
-  timeLeft: number;
+  timeElapsed: number;
   isActive: boolean;
+  sessionStartTime: Date | null;
   actions: {
     startTimer: () => void;
     pauseTimer: () => void;
     resetTimer: () => void;
+    finishAndLogSession: () => void;
     tick: () => void;
   };
 }
@@ -21,16 +21,18 @@ const formatTime = (date: Date): string => {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
 
-// Helper to get the current duration from the settings store
-const getDurationSeconds = () => useSettingsStore.getState().focusDurationMinutes * 60;
-
-export const useTimerStore = create<TimerState>()((set) => ({
-  timeLeft: getDurationSeconds(),
+export const useTimerStore = create<TimerState>()((set, get) => ({
+  timeElapsed: 0,
   isActive: false,
+  sessionStartTime: null,
   actions: {
     startTimer: () => {
       console.log("[TimerStore] Action: startTimer");
-      set({ isActive: true });
+      if (get().timeElapsed === 0) {
+        set({ isActive: true, sessionStartTime: new Date() });
+      } else {
+        set({ isActive: true });
+      }
     },
     pauseTimer: () => {
       console.log("[TimerStore] Action: pauseTimer");
@@ -38,60 +40,48 @@ export const useTimerStore = create<TimerState>()((set) => ({
     },
     resetTimer: () => {
       console.log("[TimerStore] Action: resetTimer");
-      set({ isActive: false, timeLeft: getDurationSeconds() });
+      set({ isActive: false, timeElapsed: 0, sessionStartTime: null });
+    },
+    finishAndLogSession: () => {
+      const { timeElapsed, sessionStartTime } = get();
+
+      if (timeElapsed < 60 || !sessionStartTime) {
+        toast.warning("Session too short", {
+          description: "Focus sessions must be at least 1 minute long to be logged.",
+        });
+        get().actions.resetTimer();
+        return;
+      }
+
+      console.log("[TimerStore] Finishing and logging focus session.");
+      const { addSession } = useFocusSheetStore.getState().actions;
+
+      const endTime = new Date();
+      const durationInMinutes = Math.round(timeElapsed / 60);
+
+      addSession({
+        date: endTime,
+        startTime: formatTime(sessionStartTime),
+        endTime: formatTime(endTime),
+        duration: durationInMinutes,
+        tag: "Timer",
+        note: `Completed a ${durationInMinutes}-minute focus session.`,
+      }, false);
+
+      toast.success("Focus session logged!", {
+        description: `Great job on your ${durationInMinutes}-minute session.`,
+      });
+
+      // --- The desktop notification call has been removed from here. ---
+
+      get().actions.resetTimer();
     },
     tick: () =>
       set((state) => {
-        if (state.timeLeft > 1) {
-          return { timeLeft: state.timeLeft - 1 };
+        if (state.isActive) {
+          return { timeElapsed: state.timeElapsed + 1 };
         }
-
-        if (state.timeLeft === 1) {
-          console.log("[TimerStore] Timer completed. Logging focus session.");
-          const { addSession } = useFocusSheetStore.getState().actions;
-          const focusDurationMinutes = useSettingsStore.getState().focusDurationMinutes;
-          
-          const now = new Date();
-          const startTimeDate = new Date(now.getTime() - focusDurationMinutes * 60 * 1000);
-
-          addSession({
-            date: now,
-            startTime: formatTime(startTimeDate),
-            endTime: formatTime(now),
-            duration: focusDurationMinutes,
-            tag: "Pomodoro",
-            note: "Completed a focus session using the timer.",
-          });
-
-          // Show a toast as an in-app confirmation
-          toast.success("Focus session complete!", {
-            description: "Great job! Time for a well-deserved break.",
-          });
-          
-          // Send a desktop notification
-          showNotification({
-            title: "Focus Session Complete!",
-            body: "Great job! Time for a well-deserved break.",
-          });
-          
-          return { timeLeft: 0, isActive: false };
-        }
-
-        return { isActive: false };
+        return {};
       }),
   },
 }));
-
-// Listen for changes in the settings store. If the duration changes
-// while the timer is not active, reset the timer to the new duration.
-useSettingsStore.subscribe(
-  (newState, oldState) => {
-    if (newState.focusDurationMinutes !== oldState.focusDurationMinutes) {
-      const timerState = useTimerStore.getState();
-      if (!timerState.isActive) {
-        console.log("[TimerStore] Duration setting changed. Resetting timer.");
-        timerState.actions.resetTimer();
-      }
-    }
-  }
-);

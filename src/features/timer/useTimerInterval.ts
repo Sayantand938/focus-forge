@@ -1,3 +1,4 @@
+// File: src/features/timer/useTimerInterval.ts
 import { useEffect } from "react";
 import { useTimerStore } from "./timer.store";
 
@@ -7,13 +8,13 @@ import { useTimerStore } from "./timer.store";
  */
 export function useTimerInterval() {
   const isActive = useTimerStore((state) => state.isActive);
-  const timeLeft = useTimerStore((state) => state.timeLeft);
   const tick = useTimerStore((state) => state.actions.tick);
 
   useEffect(() => {
     let intervalId: ReturnType<typeof setInterval> | null = null;
 
-    if (isActive && timeLeft > 0) {
+    // The interval now only depends on whether the timer is active.
+    if (isActive) {
       console.log("[useTimerInterval] Setting up interval.");
       intervalId = setInterval(() => {
         tick(); // Call the tick action from the store
@@ -26,5 +27,5 @@ export function useTimerInterval() {
         clearInterval(intervalId);
       }
     };
-  }, [isActive, timeLeft, tick]);
+  }, [isActive, tick]);
 }

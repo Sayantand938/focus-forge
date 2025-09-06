@@ -1,13 +1,12 @@
-// src/features/settings/index.tsx
+// File: src/features/settings/index.tsx
 import {
  Card,
  CardDescription,
  CardTitle,
 } from "@/shared/ui/card";
 import { ThemeSwitcher } from "./components/theme-switcher";
-import { TimerSettings } from "./components/timer-settings";
 import { DataManagement } from "./components/data-management";
-import { ResetData } from "./components/reset-data"; // Import the new component
+import { ResetData } from "./components/reset-data";
 
 export function SettingsFeature() {
  return (
@@ -20,7 +19,7 @@ export function SettingsFeature() {
      </p>
     </div>
 
-    <TimerSettings />
+    {/* The TimerSettings component has been removed from here */}
 
     <Card className="p-0">
      <div className="flex flex-col md:flex-row md:justify-between md:items-center p-6">
@@ -37,7 +36,7 @@ export function SettingsFeature() {
 
     <DataManagement />
 
-    <ResetData /> {/* Add the new component here */}
+    <ResetData />
    </div>
   </main>
  );

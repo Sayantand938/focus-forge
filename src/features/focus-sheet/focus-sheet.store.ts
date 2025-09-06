@@ -1,4 +1,4 @@
-// src/features/focus-sheet/focus-sheet.store.ts
+// File: src/features/focus-sheet/focus-sheet.store.ts
 import { create } from "zustand";
 import { toast } from "sonner";
 import { focusSheetService } from "./focus-sheet.service";
@@ -21,7 +21,8 @@ interface FocusSheetState {
   actions: {
     init: () => void;
     clearData: () => void;
-    addSession: (session: Omit<FocusSession, "id">) => Promise<void>;
+    // --- MODIFICATION: Added optional showToast parameter ---
+    addSession: (session: Omit<FocusSession, "id">, showToast?: boolean) => Promise<void>;
     updateSession: (updatedSession: FocusSession) => Promise<void>;
     removeSession: (id: string) => Promise<void>;
   };
@@ -50,10 +51,13 @@ export const useFocusSheetStore = create<FocusSheetState>((set) => ({
       }
       set({ sessions: [] });
     },
-    addSession: async (newSession) => {
+    // --- MODIFICATION: Use the showToast parameter, defaulting to true ---
+    addSession: async (newSession, showToast = true) => {
       try {
         await focusSheetService.add(newSession);
-        toast.success("New focus session logged!");
+        if (showToast) {
+          toast.success("New focus session logged!");
+        }
       } catch (error) {
         console.error("Failed to add session:", error);
         toast.error("Failed to add session.");
